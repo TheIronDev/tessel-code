@@ -1,7 +1,9 @@
 // Import the interface to Tessel hardware
 var tessel = require('tessel'),
 	ambientlib = require('ambient-attx4'),
-	cameraLib = require('camera-vc0706');
+	cameraLib = require('camera-vc0706'),
+	http = require('http'),
+	querystring = require('querystring');
 
 var ambient = ambientlib.use(tessel.port['A']),
 	camera = cameraLib.use(tessel.port['B']),
@@ -28,9 +30,40 @@ function takePicture(newDate) {
 		var name = 'picture-' + newDate.toISOString() + '.jpg';
 		// Save the image
 		console.log('Picture saving as', name, '...');
-		process.sendfile(name, image);
-		console.log('done.');
+		// process.sendfile(name, image);
+		uploadPicture(name, image);
 	});
+}
+
+function uploadPicture(name, image) {
+
+	var post_data = querystring.stringify({
+		'name' : name,
+		'image': image
+	});
+
+	var post_options = {
+		host: 'tessel-sandbox.herokuapp.com',
+		port: '80',
+		path: '/cloudinary',
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/x-www-form-urlencoded',
+			'Content-Length': post_data.length
+		}
+	};
+
+	// Set up the request
+	var post_req = http.request(post_options, function(res) {
+		res.setEncoding('utf8');
+		res.on('data', function (chunk) {
+			console.log('Response: ' + chunk);
+		});
+	});
+
+	// post the data
+	post_req.write(post_data);
+	post_req.end();
 }
 
 function ambientSoundHandler(data) {
